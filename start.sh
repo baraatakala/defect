@@ -6,4 +6,4 @@ python -m spacy download en_core_web_sm || echo "⚠️ SpaCy model download fai
 
 # Start the application
 echo "🚀 Starting Building Defect Detector..."
-exec gunicorn app:app --host=0.0.0.0 --port=$PORT --timeout 120 --workers 1
+exec gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1

@@ -354,8 +354,10 @@
             }
         });
         
-        // Set print date
-        document.getElementById('print-date').textContent = new Date().toLocaleDateString();
+        // Set print dates
+        const currentDateTime = new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString();
+        document.getElementById('print-date').textContent = currentDateTime;
+        document.getElementById('current-date').textContent = currentDateTime;
         
         // Export PDF functionality
         function exportToPDF() {

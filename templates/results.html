@@ -332,8 +332,10 @@
             window.print();
         }
         
-        // Set print date
-        document.getElementById('print-date').textContent = new Date().toLocaleDateString();
+        // Set print dates
+        const currentDate = new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString();
+        document.getElementById('print-date').textContent = currentDate;
+        document.getElementById('footer-date').textContent = currentDate;
         
         // Enhanced print functionality
         window.addEventListener('beforeprint', function() {
@@ -368,7 +370,7 @@
     
     <!-- Print Footer (only visible when printing) -->
     <div class="print-footer d-none">
-        <p>Building Defect Detector Report | Page <span class="page-number"></span> | Generated: {{ moment().format('YYYY-MM-DD HH:mm') }}</p>
+        <p>Building Defect Detector Report | Generated: <span id="footer-date"></span> | AI-Powered Defect Detection System</p>
     </div>
 </body>
 </html>

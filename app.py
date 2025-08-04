@@ -1140,7 +1140,7 @@ def view_report(report_id):
                 'severity_distribution': severity_counts,
                 'category_distribution': category_counts,
                 'priority_defects': [d for d in defects if d['severity'] in ['critical', 'high']],
-                'recommendations': generate_recommendations(defects)
+                'recommendations': generate_recommendations_from_defects(defects)
             }
         
         return render_template('results.html',
@@ -1159,7 +1159,7 @@ def view_report(report_id):
         flash('Error loading report', 'error')
         return redirect(url_for('reports_history'))
 
-def generate_recommendations(defects):
+def generate_recommendations_from_defects(defects):
     """Generate recommendations based on defects"""
     recommendations = []
     

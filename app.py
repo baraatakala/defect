@@ -142,6 +142,134 @@ def init_database():
     conn.commit()
     conn.close()
 
+def create_sample_data():
+    """Create sample reports if database is empty (for demo purposes)"""
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        
+        # Check if we already have reports
+        cursor.execute('SELECT COUNT(*) FROM reports')
+        count = cursor.fetchone()[0]
+        
+        if count > 0:
+            print(f"📊 Database already has {count} reports, skipping sample data creation")
+            conn.close()
+            return
+        
+        print("📄 Creating sample reports for demo...")
+        
+        # Sample reports data
+        sample_reports = [
+            {
+                'filename': 'residential_inspection_001.pdf',
+                'file_type': 'pdf',
+                'defects': [
+                    {'category': 'structural', 'severity': 'high', 'description': 'Foundation crack in basement wall', 'location': 'basement', 'confidence': 0.92},
+                    {'category': 'electrical', 'severity': 'medium', 'description': 'Outdated electrical panel needs upgrade', 'location': 'utility room', 'confidence': 0.85},
+                    {'category': 'plumbing', 'severity': 'low', 'description': 'Minor leak under kitchen sink', 'location': 'kitchen', 'confidence': 0.78}
+                ]
+            },
+            {
+                'filename': 'commercial_building_survey.docx',
+                'file_type': 'docx',
+                'defects': [
+                    {'category': 'hvac', 'severity': 'critical', 'description': 'HVAC system complete failure', 'location': 'main floor', 'confidence': 0.98},
+                    {'category': 'safety', 'severity': 'high', 'description': 'Emergency exit blocked by storage', 'location': 'corridor', 'confidence': 0.95},
+                    {'category': 'structural', 'severity': 'medium', 'description': 'Ceiling tile water damage', 'location': 'office area', 'confidence': 0.82},
+                    {'category': 'electrical', 'severity': 'high', 'description': 'Exposed wiring in ceiling cavity', 'location': 'ceiling space', 'confidence': 0.88}
+                ]
+            },
+            {
+                'filename': 'apartment_maintenance_report.txt',
+                'file_type': 'txt',
+                'defects': [
+                    {'category': 'cosmetic', 'severity': 'low', 'description': 'Paint peeling in bathroom', 'location': 'bathroom', 'confidence': 0.65},
+                    {'category': 'plumbing', 'severity': 'medium', 'description': 'Low water pressure in shower', 'location': 'bathroom', 'confidence': 0.75}
+                ]
+            },
+            {
+                'filename': 'office_building_inspection.pdf',
+                'file_type': 'pdf',
+                'defects': [
+                    {'category': 'structural', 'severity': 'critical', 'description': 'Load-bearing beam showing stress fractures', 'location': 'third floor', 'confidence': 0.96},
+                    {'category': 'safety', 'severity': 'critical', 'description': 'Fire alarm system not functional', 'location': 'entire building', 'confidence': 0.99},
+                    {'category': 'hvac', 'severity': 'medium', 'description': 'Air conditioning inefficient', 'location': 'upper floors', 'confidence': 0.80},
+                    {'category': 'electrical', 'severity': 'low', 'description': 'Some fluorescent lights flickering', 'location': 'office spaces', 'confidence': 0.70},
+                    {'category': 'plumbing', 'severity': 'medium', 'description': 'Water pressure issues on upper floors', 'location': 'restrooms', 'confidence': 0.77}
+                ]
+            },
+            {
+                'filename': 'warehouse_condition_report.pdf',
+                'file_type': 'pdf',
+                'defects': [
+                    {'category': 'structural', 'severity': 'medium', 'description': 'Metal roof panels showing rust', 'location': 'roof', 'confidence': 0.83},
+                    {'category': 'safety', 'severity': 'high', 'description': 'Damaged loading dock safety barriers', 'location': 'loading area', 'confidence': 0.90}
+                ]
+            }
+        ]
+        
+        # Add reports with timestamps
+        from datetime import datetime, timedelta
+        import random
+        
+        for i, report_data in enumerate(sample_reports):
+            # Generate timestamps spread over the past month
+            days_ago = random.randint(1, 30)
+            upload_date = datetime.now() - timedelta(days=days_ago)
+            
+            # Create analysis data
+            defects = report_data['defects']
+            severity_dist = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
+            category_dist = {}
+            
+            for defect in defects:
+                severity_dist[defect['severity']] += 1
+                category_dist[defect['category']] = category_dist.get(defect['category'], 0) + 1
+            
+            analysis_data = {
+                'total_defects': len(defects),
+                'severity_distribution': severity_dist,
+                'category_distribution': category_dist,
+                'priority_defects': [d for d in defects if d['severity'] in ['critical', 'high']]
+            }
+            
+            # Insert report
+            cursor.execute('''
+                INSERT INTO reports (filename, upload_date, file_type, total_defects, analysis_data)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (
+                report_data['filename'],
+                upload_date.isoformat(),
+                report_data['file_type'],
+                len(defects),
+                json.dumps(analysis_data)
+            ))
+            
+            report_id = cursor.lastrowid
+            
+            # Insert defects
+            for defect in defects:
+                cursor.execute('''
+                    INSERT INTO defects (report_id, category, severity, description, location, confidence)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (
+                    report_id,
+                    defect['category'],
+                    defect['severity'],
+                    defect['description'],
+                    defect['location'],
+                    defect['confidence']
+                ))
+        
+        conn.commit()
+        conn.close()
+        
+        print("✅ Sample reports created for demo navigation testing")
+        
+    except Exception as e:
+        print(f"❌ Error creating sample data: {e}")
+
 def load_analytics():
     """Load analytics data from file"""
     global analytics_data
@@ -1070,6 +1198,7 @@ if __name__ == '__main__':
     # Initialize
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     init_database()
+    create_sample_data()  # Create sample reports for demo
     load_analytics()
     
     print("🏗️ Building Defect Detector Starting...")

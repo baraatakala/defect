@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Defect Detector - AI Powered Building Survey Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-building"></i> Building Defect Detector
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/analytics"><i class="fas fa-chart-line"></i> Analytics</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h1 class="display-4 fw-bold text-white mb-4">
+                        AI-Powered Building Survey Analysis
+                    </h1>
+                    <p class="lead text-white mb-4">
+                        Upload your building survey reports and let AI automatically detect and classify construction defects. 
+                        Save time, improve accuracy, and prioritize maintenance actions.
+                    </p>
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <div class="stat-number">{{ analytics.total_reports }}</div>
+                            <div class="stat-label">Reports Analyzed</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">{{ analytics.total_defects }}</div>
+                            <div class="stat-label">Defects Detected</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">{{ analytics.reports_today }}</div>
+                            <div class="stat-label">Today's Reports</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="upload-section">
+                        <div class="card shadow-lg">
+                            <div class="card-header bg-white">
+                                <h3 class="card-title mb-0">
+                                    <i class="fas fa-upload text-primary"></i> Upload Survey Report
+                                </h3>
+                            </div>
+                            <div class="card-body">
+                                <!-- Flash Messages -->
+                                {% with messages = get_flashed_messages() %}
+                                    {% if messages %}
+                                        {% for message in messages %}
+                                            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                                {{ message }}
+                                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endwith %}
+
+                                <form action="/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+                                    <div class="mb-3">
+                                        <label for="file" class="form-label">Select Building Survey Report</label>
+                                        <input type="file" class="form-control form-control-lg" id="file" name="file" 
+                                               accept=".pdf,.docx,.doc,.txt" required>
+                                        <div class="form-text">
+                                            <i class="fas fa-info-circle"></i> 
+                                            Supported formats: PDF, DOCX, DOC, TXT (Max size: 16MB)
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary btn-lg w-100" id="analyzeBtn">
+                                        <i class="fas fa-search"></i> Analyze Report
+                                    </button>
+                                </form>
+
+                                <!-- Loading Indicator -->
+                                <div id="loadingIndicator" class="text-center mt-3" style="display: none;">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">Analyzing your report... This may take a few moments.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-12 text-center mb-5">
+                <h2 class="display-5 fw-bold">Key Features</h2>
+                <p class="lead text-muted">Advanced AI technology for comprehensive building defect detection</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-upload"></i>
+                    </div>
+                    <h4>Multi-Format Support</h4>
+                    <p>Upload PDF, DOCX, or text files. Our AI extracts and analyzes content from various document formats.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="feature-card text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h4>AI Classification</h4>
+                    <p>Automatically classifies defects into categories: structural, moisture, electrical, plumbing, and more.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="feature-card text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <h4>Visual Analytics</h4>
+                    <p>Interactive dashboards with defect distribution, severity analysis, and maintenance recommendations.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="feature-card text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h4>Risk Assessment</h4>
+                    <p>Prioritizes defects by severity level: critical, high, medium, and low priority maintenance needs.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="feature-card text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <h4>Location Detection</h4>
+                    <p>Identifies defect locations within the building for targeted maintenance planning.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="feature-card text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <h4>Smart Recommendations</h4>
+                    <p>Generates actionable maintenance recommendations based on defect analysis and severity.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works Section -->
+    <div class="bg-light py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 text-center mb-5">
+                    <h2 class="display-5 fw-bold">How It Works</h2>
+                    <p class="lead text-muted">Simple process to get comprehensive defect analysis</p>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-3 text-center">
+                    <div class="process-step">
+                        <div class="step-number">1</div>
+                        <h5>Upload Report</h5>
+                        <p>Upload your building survey report in PDF, DOCX, or text format</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 text-center">
+                    <div class="process-step">
+                        <div class="step-number">2</div>
+                        <h5>AI Analysis</h5>
+                        <p>Our AI extracts text and identifies defect patterns using NLP technology</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 text-center">
+                    <div class="process-step">
+                        <div class="step-number">3</div>
+                        <h5>Classification</h5>
+                        <p>Defects are categorized by type, severity, and location within the building</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 text-center">
+                    <div class="process-step">
+                        <div class="step-number">4</div>
+                        <h5>Results</h5>
+                        <p>Get detailed analysis with visual charts and maintenance recommendations</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Target Audience Section -->
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-12 text-center mb-5">
+                <h2 class="display-5 fw-bold">Who Benefits</h2>
+                <p class="lead text-muted">Designed for professionals in construction and property management</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="audience-card">
+                    <i class="fas fa-hard-hat"></i>
+                    <h5>Civil Engineers & Inspectors</h5>
+                    <p>Streamline technical audits and defect reporting with AI-powered analysis</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="audience-card">
+                    <i class="fas fa-home"></i>
+                    <h5>Property Consultants</h5>
+                    <p>Enhance property assessments and maintenance planning efficiency</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="audience-card">
+                    <i class="fas fa-landmark"></i>
+                    <h5>Government Bodies</h5>
+                    <p>Improve compliance tracking and regulatory oversight processes</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-building"></i> Building Defect Detector</h5>
+                    <p>AI-powered building survey analysis for smarter maintenance decisions.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>&copy; 2025 Decoding Data Science Academy - AI Application Challenge</p>
+                    <small class="text-muted">Built with Flask, Bootstrap, and Machine Learning</small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Handle form submission with loading indicator
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            
+            // Show loading indicator
+            loadingIndicator.style.display = 'block';
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        });
+
+        // File input validation
+        document.getElementById('file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const fileSize = file.size / 1024 / 1024; // Convert to MB
+                if (fileSize > 16) {
+                    alert('File size exceeds 16MB limit. Please choose a smaller file.');
+                    e.target.value = '';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

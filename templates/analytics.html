@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Building Defect Detector</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-building"></i> Building Defect Detector
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
+                <a class="nav-link active" href="/analytics"><i class="fas fa-chart-line"></i> Analytics</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="display-6 fw-bold">
+                    <i class="fas fa-chart-line text-primary"></i> Analytics Dashboard
+                </h1>
+                <p class="lead text-muted">Comprehensive overview of building defect detection performance</p>
+            </div>
+        </div>
+
+        <!-- Key Metrics Cards -->
+        <div class="row mb-5">
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="analytics-card">
+                    <div class="card-body text-center">
+                        <div class="analytics-icon text-primary">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <h3 class="fw-bold">{{ analytics.total_reports }}</h3>
+                        <p class="text-muted mb-0">Total Reports Analyzed</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="analytics-card">
+                    <div class="card-body text-center">
+                        <div class="analytics-icon text-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h3 class="fw-bold">{{ analytics.total_defects }}</h3>
+                        <p class="text-muted mb-0">Total Defects Detected</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="analytics-card">
+                    <div class="card-body text-center">
+                        <div class="analytics-icon text-warning">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        <h3 class="fw-bold">{{ analytics.reports_today }}</h3>
+                        <p class="text-muted mb-0">Reports Today</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="analytics-card">
+                    <div class="card-body text-center">
+                        <div class="analytics-icon text-info">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <h3 class="fw-bold">
+                            {% if analytics.total_reports > 0 %}
+                                {{ ((analytics.total_defects / analytics.total_reports) | round(1)) }}
+                            {% else %}
+                                0
+                            {% endif %}
+                        </h3>
+                        <p class="text-muted mb-0">Avg Defects/Report</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-5">
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-pie text-primary"></i> Defect Categories Distribution
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if analytics.defect_categories %}
+                        <canvas id="categoriesChart" height="300"></canvas>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No data available yet. Analyze some reports to see category distribution.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar text-primary"></i> Severity Levels
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="severityChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Defect Categories Table -->
+        {% if analytics.defect_categories %}
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-list text-primary"></i> Defect Categories Breakdown
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for category, count in analytics.defect_categories.items() %}
+                            <div class="col-md-4 mb-3">
+                                <div class="category-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="fw-bold mb-0">{{ category.title() }}</h6>
+                                            <small class="text-muted">{{ count }} defects</small>
+                                        </div>
+                                        <div class="category-count">
+                                            {{ count }}
+                                        </div>
+                                    </div>
+                                    <div class="progress mt-2" style="height: 6px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ (count / analytics.total_defects * 100) if analytics.total_defects > 0 else 0 }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Reports -->
+        {% if recent_reports %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-clock text-primary"></i> Recent Reports
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Report Name</th>
+                                        <th>Upload Date</th>
+                                        <th>Defects Found</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for report in recent_reports %}
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-file-alt text-muted me-2"></i>
+                                            {{ report[0] }}
+                                        </td>
+                                        <td>{{ report[1] }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ report[2] }} defects</span>
+                                        </td>
+                                        <td>
+                                            {% if report[2] > 5 %}
+                                                <span class="badge bg-danger">High Priority</span>
+                                            {% elif report[2] > 2 %}
+                                                <span class="badge bg-warning">Medium Priority</span>
+                                            {% elif report[2] > 0 %}
+                                                <span class="badge bg-info">Low Priority</span>
+                                            {% else %}
+                                                <span class="badge bg-success">No Issues</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h4>No Reports Yet</h4>
+                        <p class="text-muted">Start by uploading building survey reports to see analytics data here.</p>
+                        <a href="/" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Upload First Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-building"></i> Building Defect Detector</h5>
+                    <p>AI-powered building survey analysis for smarter maintenance decisions.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>&copy; 2025 Decoding Data Science Academy - AI Application Challenge</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Chart.js Configuration -->
+    <script>
+        // Defect Categories Chart
+        {% if analytics.defect_categories %}
+        const categoriesData = {{ analytics.defect_categories | tojson }};
+        const categoriesLabels = Object.keys(categoriesData);
+        const categoriesValues = Object.values(categoriesData);
+
+        if (categoriesLabels.length > 0) {
+            const categoriesCtx = document.getElementById('categoriesChart').getContext('2d');
+            new Chart(categoriesCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: categoriesLabels.map(label => label.charAt(0).toUpperCase() + label.slice(1)),
+                    datasets: [{
+                        data: categoriesValues,
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                            '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
+                            '#4BC0C0', '#FF6384'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        {% endif %}
+
+        // Severity Distribution Chart
+        const severityData = {{ analytics.severity_distribution | tojson }};
+        const severityCtx = document.getElementById('severityChart').getContext('2d');
+        new Chart(severityCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{
+                    label: 'Number of Defects',
+                    data: [
+                        severityData.critical,
+                        severityData.high,
+                        severityData.medium,
+                        severityData.low
+                    ],
+                    backgroundColor: [
+                        '#dc3545', // Critical - Red
+                        '#fd7e14', // High - Orange
+                        '#ffc107', // Medium - Yellow
+                        '#28a745'  // Low - Green
+                    ],
+                    borderWidth: 1,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

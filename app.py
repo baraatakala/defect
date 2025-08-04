@@ -63,25 +63,26 @@ analytics_data = {
     'last_reset': datetime.now().strftime('%Y-%m-%d')
 }
 
-# Defect categories and keywords
+# Enhanced defect categories with more specific keywords
 DEFECT_CATEGORIES = {
-    'structural': ['crack', 'fracture', 'settlement', 'foundation', 'beam', 'column', 'wall', 'structural damage', 'subsidence'],
-    'moisture': ['damp', 'moisture', 'leak', 'water damage', 'mold', 'mould', 'condensation', 'wet rot', 'dry rot'],
-    'electrical': ['wiring', 'electrical', 'socket', 'switch', 'circuit', 'fuse', 'power', 'electrical fault'],
-    'plumbing': ['pipe', 'plumbing', 'drain', 'toilet', 'sink', 'water pressure', 'blockage', 'tap'],
-    'roofing': ['roof', 'tile', 'gutter', 'chimney', 'flashing', 'leak', 'roof damage', 'slate'],
-    'hvac': ['heating', 'ventilation', 'air conditioning', 'hvac', 'boiler', 'radiator', 'vent'],
-    'insulation': ['insulation', 'thermal', 'cold spot', 'draft', 'energy efficiency', 'heat loss'],
-    'pest': ['pest', 'infestation', 'termite', 'rodent', 'insect', 'woodworm', 'beetle'],
-    'safety': ['safety', 'hazard', 'dangerous', 'asbestos', 'lead paint', 'fire safety', 'emergency exit'],
-    'cosmetic': ['paint', 'decoration', 'cosmetic', 'appearance', 'finish', 'surface']
+    'structural': ['crack', 'fracture', 'settlement', 'foundation', 'beam', 'column', 'wall damage', 'structural damage', 'subsidence', 'structural failure', 'load bearing', 'foundation crack'],
+    'moisture': ['damp', 'moisture', 'leak', 'water damage', 'mold', 'mould', 'condensation', 'wet rot', 'dry rot', 'water ingress', 'humidity', 'moisture content'],
+    'electrical': ['wiring', 'electrical', 'socket', 'switch', 'circuit breaker', 'fuse', 'power', 'electrical fault', 'electrical hazard', 'short circuit', 'electrical panel'],
+    'plumbing': ['pipe', 'plumbing', 'drain', 'toilet', 'sink', 'water pressure', 'blockage', 'tap', 'water supply', 'drainage', 'plumbing leak'],
+    'roofing': ['roof', 'tile', 'gutter', 'chimney', 'flashing', 'roof leak', 'roof damage', 'slate', 'roof membrane', 'downspout', 'roof structure'],
+    'hvac': ['heating', 'ventilation', 'air conditioning', 'hvac', 'boiler', 'radiator', 'vent', 'ahu', 'air handler', 'hvac system', 'climate control'],
+    'insulation': ['insulation', 'thermal', 'cold spot', 'draft', 'energy efficiency', 'heat loss', 'thermal bridge', 'insulation gap', 'thermal performance'],
+    'pest': ['pest', 'infestation', 'termite', 'rodent', 'insect', 'woodworm', 'beetle', 'pest control', 'pest damage', 'infestation evidence'],
+    'safety': ['safety hazard', 'dangerous', 'asbestos', 'lead paint', 'fire safety', 'emergency exit', 'safety risk', 'hazardous material', 'safety concern', 'urgent risk'],
+    'cosmetic': ['paint', 'decoration', 'cosmetic', 'appearance', 'finish', 'surface', 'aesthetic', 'painting', 'decorative', 'visual']
 }
 
+# Enhanced severity keywords with more specific indicators
 SEVERITY_KEYWORDS = {
-    'critical': ['urgent', 'immediate', 'critical', 'dangerous', 'severe', 'major structural', 'safety risk'],
-    'high': ['significant', 'major', 'serious', 'extensive', 'widespread', 'important'],
-    'medium': ['moderate', 'noticeable', 'minor structural', 'visible', 'needs attention'],
-    'low': ['minor', 'cosmetic', 'superficial', 'small', 'slight', 'minimal']
+    'critical': ['urgent risk', 'immediate danger', 'critical', 'dangerous', 'severe', 'major structural', 'safety risk', 'structural failure', 'immediate attention', 'emergency'],
+    'high': ['significant', 'major', 'serious', 'extensive', 'widespread', 'important', 'substantial', 'considerable', 'notable'],
+    'medium': ['moderate', 'noticeable', 'minor structural', 'visible', 'needs attention', 'attention required', 'should be addressed'],
+    'low': ['minor', 'cosmetic', 'superficial', 'small', 'slight', 'minimal', 'aesthetic', 'non-critical']
 }
 
 # Initialize app when module is loaded (for gunicorn)
@@ -219,17 +220,29 @@ def preprocess_text(text):
     return text
 
 def detect_defects_rule_based(text):
-    """Rule-based defect detection using keywords and patterns"""
+    """Enhanced rule-based defect detection with deduplication and filtering"""
     defects = []
     text_lower = text.lower()
     
+    # Filter out AI-generated summary sections
+    filtered_text = filter_summary_sections(text)
+    
     # Split text into sentences for better context
-    sentences = re.split(r'[.!?]+', text)
+    sentences = re.split(r'[.!?]+', filtered_text)
+    
+    # Track processed sentences to avoid duplicates
+    processed_sentences = set()
     
     for sentence in sentences:
         sentence = sentence.strip()
-        if len(sentence) < 10:  # Skip very short sentences
+        if len(sentence) < 15:  # Skip very short sentences
             continue
+            
+        # Skip if we've already processed a very similar sentence
+        sentence_key = sentence.lower()[:50]  # First 50 chars as key
+        if sentence_key in processed_sentences:
+            continue
+        processed_sentences.add(sentence_key)
         
         sentence_lower = sentence.lower()
         
@@ -237,19 +250,18 @@ def detect_defects_rule_based(text):
         for category, keywords in DEFECT_CATEGORIES.items():
             for keyword in keywords:
                 if keyword in sentence_lower:
-                    # Determine severity
-                    severity = 'medium'  # default
-                    for sev, sev_keywords in SEVERITY_KEYWORDS.items():
-                        for sev_keyword in sev_keywords:
-                            if sev_keyword in sentence_lower:
-                                severity = sev
-                                break
+                    # Determine severity with enhanced logic
+                    severity = determine_severity(sentence_lower)
                     
-                    # Extract location if possible
-                    location = extract_location(sentence)
+                    # Enhanced location extraction
+                    location = extract_location_enhanced(sentence)
                     
                     # Calculate confidence based on keyword presence and context
-                    confidence = calculate_confidence(sentence_lower, keyword, category)
+                    confidence = calculate_confidence_enhanced(sentence_lower, keyword, category)
+                    
+                    # Skip low-confidence detections
+                    if confidence < 0.4:
+                        continue
                     
                     defect = {
                         'category': category,
@@ -262,46 +274,197 @@ def detect_defects_rule_based(text):
                     defects.append(defect)
                     break  # Avoid duplicate detections for same sentence
     
-    return defects
+    # Deduplicate defects based on similarity
+    deduplicated_defects = deduplicate_defects(defects)
+    
+    return deduplicated_defects
 
-def extract_location(sentence):
-    """Extract location information from sentence"""
+def filter_summary_sections(text):
+    """Filter out AI-generated summary sections and metadata"""
+    # Remove lines that start with typical AI summary indicators
+    lines = text.split('\n')
+    filtered_lines = []
+    
+    skip_patterns = [
+        r'🧠\s*(what to expect|ai|detector)',
+        r'✅\s*(what it did well|areas)',
+        r'⚠️\s*(areas that need)',
+        r'📊\s*(analytics|dashboard)',
+        r'🏁\s*(verdict|conclusion)',
+        r'📈\s*(overall evaluation|metric)',
+        r'would you like me to',
+        r'ask chatgpt',
+        r'this result is',
+        r'with slight refinements'
+    ]
+    
+    for line in lines:
+        line_lower = line.lower().strip()
+        
+        # Skip lines that match AI summary patterns
+        if any(re.search(pattern, line_lower) for pattern in skip_patterns):
+            continue
+            
+        # Skip very short lines or metadata
+        if len(line_lower) < 10:
+            continue
+            
+        filtered_lines.append(line)
+    
+    return '\n'.join(filtered_lines)
+
+def extract_location_enhanced(sentence):
+    """Enhanced location extraction with better pattern matching"""
+    sentence_lower = sentence.lower()
+    
+    # More comprehensive location patterns
     location_patterns = [
-        r'(room \d+|bedroom \d+|bathroom \d+)',
+        # Specific room identifiers
+        r'(basement room \d+|room \d+[a-z]?|bedroom \d+|bathroom \d+)',
+        r'(corridor \d+[a-z]?|hallway \d+[a-z]?|office \d+[a-z]?)',
+        r'(unit \d+[a-z]?|apartment \d+[a-z]?|suite \d+[a-z]?)',
+        
+        # Equipment/system locations
+        r'(rooftop ahu \d+|ahu \d+|boiler room|mechanical room)',
+        r'(electrical room|server room|storage room)',
+        
+        # General areas
         r'(kitchen|bathroom|bedroom|living room|basement|attic|garage)',
-        r'(ground floor|first floor|second floor|third floor)',
-        r'(north|south|east|west)\s+(wall|side)',
-        r'(front|back|rear)\s+(wall|elevation)',
-        r'(roof|ceiling|floor|wall)',
+        r'(lobby|entrance|stairwell|elevator|parking)',
+        
+        # Floor references
+        r'(ground floor|first floor|second floor|third floor|\d+(st|nd|rd|th) floor)',
+        
+        # Directional/structural
+        r'(north|south|east|west)\s+(wall|side|elevation|facade)',
+        r'(front|back|rear)\s+(wall|elevation|entrance)',
+        r'(exterior|interior)\s+(wall|surface)',
+        
+        # Building components
+        r'(roof|ceiling|floor|wall|foundation|basement)',
     ]
     
     for pattern in location_patterns:
-        match = re.search(pattern, sentence.lower())
+        match = re.search(pattern, sentence_lower)
         if match:
-            return match.group(1)
+            return match.group(1).title()
     
-    return "unspecified"
+    return "Unspecified"
 
-def calculate_confidence(sentence, keyword, category):
-    """Calculate confidence score for defect detection"""
-    confidence = 0.5  # base confidence
+def determine_severity(sentence):
+    """Enhanced severity determination with priority scoring"""
+    sentence_lower = sentence.lower()
     
-    # Increase confidence for multiple relevant keywords
+    # Severity scoring system
+    severity_scores = {
+        'critical': 0,
+        'high': 0,
+        'medium': 0,
+        'low': 0
+    }
+    
+    # Score based on severity keywords
+    for severity, keywords in SEVERITY_KEYWORDS.items():
+        for keyword in keywords:
+            if keyword in sentence_lower:
+                severity_scores[severity] += 1
+    
+    # Additional critical indicators
+    critical_indicators = ['urgent risk', 'immediate danger', 'safety hazard', 'structural failure']
+    if any(indicator in sentence_lower for indicator in critical_indicators):
+        severity_scores['critical'] += 2
+    
+    # Find highest scoring severity
+    max_score = max(severity_scores.values())
+    if max_score == 0:
+        return 'medium'  # default
+    
+    for severity, score in severity_scores.items():
+        if score == max_score:
+            return severity
+    
+    return 'medium'
+
+def calculate_confidence_enhanced(sentence, keyword, category):
+    """Enhanced confidence calculation with multiple factors"""
+    confidence = 0.4  # base confidence
+    
+    # Factor 1: Multiple relevant keywords in same sentence
     category_keywords = DEFECT_CATEGORIES.get(category, [])
     keyword_count = sum(1 for kw in category_keywords if kw in sentence)
-    confidence += min(keyword_count * 0.1, 0.3)
+    confidence += min(keyword_count * 0.08, 0.25)
     
-    # Increase confidence for severity indicators
+    # Factor 2: Severity indicators
     for severity_keywords in SEVERITY_KEYWORDS.values():
         if any(sev_kw in sentence for sev_kw in severity_keywords):
-            confidence += 0.1
+            confidence += 0.12
             break
     
-    # Increase confidence for specific measurements or technical terms
-    if re.search(r'\d+\s*(mm|cm|m|inch|inches|feet|ft)', sentence):
+    # Factor 3: Specific measurements or technical terms
+    if re.search(r'\d+\s*(mm|cm|m|inch|inches|feet|ft|%|degrees?|°)', sentence):
         confidence += 0.1
     
+    # Factor 4: Action words indicating actual defects
+    action_words = ['damaged', 'broken', 'cracked', 'leaking', 'failing', 'deteriorated']
+    if any(word in sentence for word in action_words):
+        confidence += 0.15
+    
+    # Factor 5: Location specificity
+    if "unspecified" not in extract_location_enhanced(sentence).lower():
+        confidence += 0.08
+    
     return min(confidence, 0.95)  # Cap at 95%
+
+def deduplicate_defects(defects):
+    """Remove duplicate or very similar defects"""
+    if not defects:
+        return defects
+    
+    unique_defects = []
+    seen_descriptions = set()
+    
+    for defect in defects:
+        # Create a normalized description for comparison
+        desc_key = normalize_description(defect['description'])
+        
+        # Check if we've seen a similar description
+        is_duplicate = False
+        for seen_desc in seen_descriptions:
+            if calculate_similarity(desc_key, seen_desc) > 0.8:
+                is_duplicate = True
+                break
+        
+        if not is_duplicate:
+            unique_defects.append(defect)
+            seen_descriptions.add(desc_key)
+    
+    return unique_defects
+
+def normalize_description(description):
+    """Normalize description for similarity comparison"""
+    # Remove common words and punctuation
+    import string
+    desc = description.lower()
+    desc = desc.translate(str.maketrans('', '', string.punctuation))
+    
+    # Remove common stopwords
+    stopwords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were']
+    words = [word for word in desc.split() if word not in stopwords]
+    
+    return ' '.join(sorted(words))
+
+def calculate_similarity(str1, str2):
+    """Calculate similarity between two strings"""
+    words1 = set(str1.split())
+    words2 = set(str2.split())
+    
+    if not words1 and not words2:
+        return 1.0
+    
+    intersection = words1.intersection(words2)
+    union = words1.union(words2)
+    
+    return len(intersection) / len(union) if union else 0
 
 def analyze_defects(defects):
     """Analyze detected defects and generate insights"""

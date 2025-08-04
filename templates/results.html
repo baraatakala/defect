@@ -268,79 +268,88 @@
     
     <!-- Chart.js Configuration -->
     <script>
+        // Safely get data from server with fallbacks
+        const categoryData = {% if analysis.category_distribution %}{{ analysis.category_distribution | tojson }}{% else %}{}{% endif %};
+        const severityData = {% if analysis.severity_distribution %}{{ analysis.severity_distribution | tojson }}{% else %}{"critical": 0, "high": 0, "medium": 0, "low": 0}{% endif %};
+        const defectsData = {% if defects %}{{ defects | tojson | safe }}{% else %}[]{% endif %};
+        
         // Category Distribution Chart
-        const categoryData = {{ analysis.category_distribution | tojson }};
         const categoryLabels = Object.keys(categoryData);
         const categoryValues = Object.values(categoryData);
         
         if (categoryLabels.length > 0) {
-            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-            new Chart(categoryCtx, {
-                type: 'pie',
+            const categoryCanvas = document.getElementById('categoryChart');
+            if (categoryCanvas) {
+                const categoryCtx = categoryCanvas.getContext('2d');
+                new Chart(categoryCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: categoryLabels.map(label => label.charAt(0).toUpperCase() + label.slice(1)),
+                        datasets: [{
+                            data: categoryValues,
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                                '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
+                                '#4BC0C0', '#FF6384'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Severity Distribution Chart
+        const severityCanvas = document.getElementById('severityChart');
+        if (severityCanvas) {
+            const severityCtx = severityCanvas.getContext('2d');
+            new Chart(severityCtx, {
+                type: 'bar',
                 data: {
-                    labels: categoryLabels.map(label => label.charAt(0).toUpperCase() + label.slice(1)),
+                    labels: ['Critical', 'High', 'Medium', 'Low'],
                     datasets: [{
-                        data: categoryValues,
+                        label: 'Number of Defects',
+                        data: [
+                            severityData.critical || 0,
+                            severityData.high || 0,
+                            severityData.medium || 0,
+                            severityData.low || 0
+                        ],
                         backgroundColor: [
-                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
-                            '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
-                            '#4BC0C0', '#FF6384'
+                            '#dc3545', // Critical - Red
+                            '#fd7e14', // High - Orange
+                            '#ffc107', // Medium - Yellow
+                            '#28a745'  // Low - Green
                         ]
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
                     plugins: {
                         legend: {
-                            position: 'bottom'
+                            display: false
                         }
                     }
                 }
             });
         }
-
-        // Severity Distribution Chart
-        const severityData = {{ analysis.severity_distribution | tojson }};
-        const severityCtx = document.getElementById('severityChart').getContext('2d');
-        new Chart(severityCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Critical', 'High', 'Medium', 'Low'],
-                datasets: [{
-                    label: 'Number of Defects',
-                    data: [
-                        severityData.critical,
-                        severityData.high,
-                        severityData.medium,
-                        severityData.low
-                    ],
-                    backgroundColor: [
-                        '#dc3545', // Critical - Red
-                        '#fd7e14', // High - Orange
-                        '#ffc107', // Medium - Yellow
-                        '#28a745'  // Low - Green
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
         
         // Export PDF functionality  
         function exportToPDF() {
@@ -384,15 +393,20 @@
         
         // AI Training Feedback Functions
         function submitFeedback(defectIndex, feedbackType) {
-            const defects = {{ defects | tojson | safe }};
-            const defect = defects[defectIndex];
+            // Safely get defects data
+            if (!defectsData || !defectsData[defectIndex]) {
+                showToast('Error: Defect data not available.', 'error');
+                return;
+            }
+            
+            const defect = defectsData[defectIndex];
             
             const feedbackData = {
-                defect_text: defect.text || defect.description,
-                category: defect.category,
-                severity: defect.severity,
-                location: defect.location,
-                confidence: defect.confidence,
+                defect_text: defect.text || defect.description || '',
+                category: defect.category || 'unknown',
+                severity: defect.severity || 'medium',
+                location: defect.location || 'unknown',
+                confidence: defect.confidence || 0.5,
                 feedback_type: feedbackType,
                 user_session: 'anonymous',
                 timestamp: new Date().toISOString()
@@ -410,12 +424,14 @@
                 if (data.success) {
                     // Update UI to show feedback was submitted
                     const feedbackControls = document.querySelectorAll('.feedback-controls')[defectIndex];
-                    feedbackControls.innerHTML = `
-                        <small class="text-success">
-                            <i class="fas fa-check-circle"></i> 
-                            Feedback: ${feedbackType}
-                        </small>
-                    `;
+                    if (feedbackControls) {
+                        feedbackControls.innerHTML = `
+                            <small class="text-success">
+                                <i class="fas fa-check-circle"></i> 
+                                Feedback: ${feedbackType}
+                            </small>
+                        `;
+                    }
                     
                     // Show success toast
                     showToast('Thank you! Your feedback helps improve our AI detection.', 'success');
@@ -430,8 +446,13 @@
         }
         
         function editDefect(defectIndex) {
-            const defects = {{ defects | tojson | safe }};
-            const defect = defects[defectIndex];
+            // Safely get defects data
+            if (!defectsData || !defectsData[defectIndex]) {
+                showToast('Error: Defect data not available.', 'error');
+                return;
+            }
+            
+            const defect = defectsData[defectIndex];
             
             // Create modal for editing defect details
             const modalHtml = `

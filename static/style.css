@@ -485,3 +485,178 @@ footer {
 .border-radius-xl {
     border-radius: 20px !important;
 }
+
+/* AI Training Feedback Controls */
+.feedback-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 120px;
+}
+
+.feedback-controls .btn {
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-size: 12px;
+    border: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.feedback-controls .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.feedback-controls .btn-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.feedback-controls .btn-danger {
+    background: linear-gradient(135deg, #dc3545, #e74c3c);
+}
+
+.feedback-controls .btn-warning {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    color: #212529;
+}
+
+.feedback-controls .btn-success:hover {
+    background: linear-gradient(135deg, #20c997, #17a2b8);
+}
+
+.feedback-controls .btn-danger:hover {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.feedback-controls .btn-warning:hover {
+    background: linear-gradient(135deg, #fd7e14, #dc3545);
+    color: white;
+}
+
+/* Feedback submitted state */
+.feedback-controls .text-success {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px;
+    border-radius: 15px;
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+/* Modal enhancements for defect editing */
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0;
+    border-bottom: none;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+.modal-body {
+    padding: 30px;
+}
+
+.modal-footer {
+    border-top: 1px solid #dee2e6;
+    padding: 20px 30px;
+}
+
+/* Training analytics enhancements */
+.training-stats {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 1px solid #dee2e6;
+}
+
+.training-stats h6 {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.training-stats .stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.training-stats .stat-item:last-child {
+    border-bottom: none;
+}
+
+.training-stats .stat-value {
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+/* Toast notifications */
+.toast-container {
+    z-index: 9999;
+}
+
+.toast {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.toast.bg-success {
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
+}
+
+.toast.bg-danger {
+    background: linear-gradient(135deg, #dc3545, #e74c3c) !important;
+}
+
+.toast-body {
+    padding: 15px;
+    font-weight: 500;
+}
+
+/* Responsive design for feedback controls */
+@media (max-width: 768px) {
+    .feedback-controls {
+        flex-direction: column;
+        gap: 3px;
+        min-width: 80px;
+    }
+    
+    .feedback-controls .btn {
+        width: 100%;
+        padding: 3px 6px;
+        font-size: 10px;
+    }
+    
+    .modal-body {
+        padding: 20px 15px;
+    }
+}
+
+/* Print styles for feedback controls */
+@media print {
+    .feedback-controls {
+        display: none !important;
+    }
+    
+    .modal {
+        display: none !important;
+    }
+    
+    .toast-container {
+        display: none !important;
+    }
+}

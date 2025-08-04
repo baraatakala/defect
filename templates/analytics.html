@@ -109,6 +109,132 @@
             </div>
         </div>
 
+        <!-- AI Training Performance Section -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-brain"></i> AI Training & Learning Performance
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="training-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">
+                                            <i class="fas fa-thumbs-up text-success"></i> User Feedback
+                                        </span>
+                                        <span class="stat-value">
+                                            {% if analytics.training_stats %}
+                                                {{ analytics.training_stats.total_feedback }}
+                                            {% else %}
+                                                0
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="training-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">
+                                            <i class="fas fa-check-circle text-success"></i> Correct Predictions
+                                        </span>
+                                        <span class="stat-value">
+                                            {% if analytics.training_stats %}
+                                                {{ analytics.training_stats.correct_feedback }}
+                                            {% else %}
+                                                0
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="training-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">
+                                            <i class="fas fa-times-circle text-danger"></i> Incorrect Predictions
+                                        </span>
+                                        <span class="stat-value">
+                                            {% if analytics.training_stats %}
+                                                {{ analytics.training_stats.incorrect_feedback }}
+                                            {% else %}
+                                                0
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="training-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">
+                                            <i class="fas fa-percentage text-info"></i> Accuracy Rate
+                                        </span>
+                                        <span class="stat-value">
+                                            {% if analytics.training_stats %}
+                                                {{ "{:.1f}".format(analytics.training_stats.improvement_rate) }}%
+                                            {% else %}
+                                                0%
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="text-primary">
+                                            <i class="fas fa-graduation-cap"></i> Learning Progress
+                                        </h6>
+                                        <div class="progress mb-2" style="height: 8px;">
+                                            <div class="progress-bar bg-gradient" role="progressbar" 
+                                                 style="width: {% if analytics.training_stats %}{{ analytics.training_stats.improvement_rate }}%{% else %}0%{% endif %}">
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">
+                                            AI accuracy improves with each feedback submission
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="text-primary">
+                                            <i class="fas fa-chart-line"></i> Next Training Goal
+                                        </h6>
+                                        <p class="mb-1">
+                                            {% if analytics.training_stats and analytics.training_stats.total_feedback < 100 %}
+                                                Collect {{ 100 - analytics.training_stats.total_feedback }} more feedback entries
+                                            {% elif analytics.training_stats and analytics.training_stats.improvement_rate < 85 %}
+                                                Improve accuracy to 85%+
+                                            {% else %}
+                                                Maintain high accuracy standards
+                                            {% endif %}
+                                        </p>
+                                        <small class="text-muted">
+                                            Help train our AI for better detection
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Charts Row -->
         <div class="row mb-5">
             <div class="col-lg-6 mb-4">

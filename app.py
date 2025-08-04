@@ -725,6 +725,182 @@ def api_analyze():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/feedback', methods=['POST'])
+def submit_feedback():
+    """Handle user feedback for AI training"""
+    try:
+        data = request.get_json()
+        
+        # Store feedback in database
+        conn = sqlite3.connect('defect_analysis.db')
+        cursor = conn.cursor()
+        
+        # Create feedback table if it doesn't exist
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ai_feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                defect_text TEXT,
+                category TEXT,
+                severity TEXT,
+                location TEXT,
+                confidence REAL,
+                feedback_type TEXT,
+                user_session TEXT,
+                timestamp TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Insert feedback
+        cursor.execute('''
+            INSERT INTO ai_feedback 
+            (defect_text, category, severity, location, confidence, feedback_type, user_session, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data.get('defect_text', ''),
+            data.get('category', ''),
+            data.get('severity', ''),
+            data.get('location', ''),
+            data.get('confidence', 0.0),
+            data.get('feedback_type', ''),
+            data.get('user_session', 'anonymous'),
+            data.get('timestamp', datetime.now().isoformat())
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        # Update analytics
+        update_training_analytics(data.get('feedback_type', ''))
+        
+        return jsonify({'success': True, 'message': 'Feedback recorded successfully'})
+        
+    except Exception as e:
+        print(f"Error submitting feedback: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/edit-defect', methods=['POST'])
+def edit_defect():
+    """Handle defect editing for AI training"""
+    try:
+        data = request.get_json()
+        
+        # Store edit data in database for training
+        conn = sqlite3.connect('defect_analysis.db')
+        cursor = conn.cursor()
+        
+        # Create defect_edits table if it doesn't exist
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS defect_edits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                defect_index INTEGER,
+                original_category TEXT,
+                new_category TEXT,
+                original_severity TEXT,
+                new_severity TEXT,
+                original_location TEXT,
+                new_location TEXT,
+                original_description TEXT,
+                new_description TEXT,
+                user_session TEXT,
+                timestamp TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Insert edit data
+        cursor.execute('''
+            INSERT INTO defect_edits 
+            (defect_index, new_category, new_severity, new_location, new_description, user_session, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data.get('defect_index', 0),
+            data.get('category', ''),
+            data.get('severity', ''),
+            data.get('location', ''),
+            data.get('description', ''),
+            data.get('user_session', 'anonymous'),
+            data.get('timestamp', datetime.now().isoformat())
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Defect edit recorded successfully'})
+        
+    except Exception as e:
+        print(f"Error editing defect: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/training-data')
+def get_training_data():
+    """Get training data for ML model improvement"""
+    try:
+        conn = sqlite3.connect('defect_analysis.db')
+        cursor = conn.cursor()
+        
+        # Get feedback data
+        cursor.execute('''
+            SELECT defect_text, category, severity, location, feedback_type, COUNT(*) as count
+            FROM ai_feedback 
+            GROUP BY defect_text, category, severity, location, feedback_type
+            ORDER BY created_at DESC
+        ''')
+        feedback_data = cursor.fetchall()
+        
+        # Get edit data
+        cursor.execute('''
+            SELECT new_category, new_severity, new_location, new_description, COUNT(*) as count
+            FROM defect_edits 
+            GROUP BY new_category, new_severity, new_location, new_description
+            ORDER BY created_at DESC
+        ''')
+        edit_data = cursor.fetchall()
+        
+        conn.close()
+        
+        return jsonify({
+            'feedback_data': feedback_data,
+            'edit_data': edit_data,
+            'total_feedback': len(feedback_data),
+            'total_edits': len(edit_data)
+        })
+        
+    except Exception as e:
+        print(f"Error getting training data: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def update_training_analytics(feedback_type):
+    """Update training analytics with new feedback"""
+    try:
+        global analytics_data
+        
+        if 'training_stats' not in analytics_data:
+            analytics_data['training_stats'] = {
+                'total_feedback': 0,
+                'correct_feedback': 0,
+                'incorrect_feedback': 0,
+                'improvement_rate': 0.0
+            }
+        
+        analytics_data['training_stats']['total_feedback'] += 1
+        
+        if feedback_type == 'correct':
+            analytics_data['training_stats']['correct_feedback'] += 1
+        elif feedback_type == 'incorrect':
+            analytics_data['training_stats']['incorrect_feedback'] += 1
+        
+        # Calculate improvement rate
+        total = analytics_data['training_stats']['total_feedback']
+        correct = analytics_data['training_stats']['correct_feedback']
+        analytics_data['training_stats']['improvement_rate'] = (correct / total * 100) if total > 0 else 0
+        
+        # Save analytics
+        save_analytics()
+        
+    except Exception as e:
+        print(f"Error updating training analytics: {e}")
+
 if __name__ == '__main__':
     # Initialize
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -734,6 +910,9 @@ if __name__ == '__main__':
     print("🏗️ Building Defect Detector Starting...")
     print("📊 Database initialized")
     print("📁 Upload folder ready")
-    print("🚀 Server starting on http://localhost:5000")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Use Railway's PORT environment variable or default to 5001 for local development
+    port = int(os.environ.get('PORT', 5001))
+    print(f"🚀 Server starting on port {port}")
+    
+    app.run(debug=True, host='0.0.0.0', port=port)

@@ -162,6 +162,7 @@
                                         <th>Location</th>
                                         <th>Description</th>
                                         <th>Confidence</th>
+                                        <th>AI Training</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -184,6 +185,20 @@
                                                      aria-valuemin="0" aria-valuemax="100">
                                                     {{ (defect.confidence * 100)|round }}%
                                                 </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <!-- AI Training Feedback -->
+                                            <div class="feedback-controls">
+                                                <button class="btn btn-sm btn-success me-1" onclick="submitFeedback({{ loop.index0 }}, 'correct')" title="Correct Detection">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger me-1" onclick="submitFeedback({{ loop.index0 }}, 'incorrect')" title="Incorrect Detection">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-warning" onclick="editDefect({{ loop.index0 }})" title="Edit Details">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -366,6 +381,219 @@
                 text.remove();
             });
         });
+        
+        // AI Training Feedback Functions
+        function submitFeedback(defectIndex, feedbackType) {
+            const defects = {{ defects | tojson | safe }};
+            const defect = defects[defectIndex];
+            
+            const feedbackData = {
+                defect_text: defect.text || defect.description,
+                category: defect.category,
+                severity: defect.severity,
+                location: defect.location,
+                confidence: defect.confidence,
+                feedback_type: feedbackType,
+                user_session: '{{ request.session.get("user_id", "anonymous") }}',
+                timestamp: new Date().toISOString()
+            };
+            
+            fetch('/api/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(feedbackData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update UI to show feedback was submitted
+                    const feedbackControls = document.querySelectorAll('.feedback-controls')[defectIndex];
+                    feedbackControls.innerHTML = `
+                        <small class="text-success">
+                            <i class="fas fa-check-circle"></i> 
+                            Feedback: ${feedbackType}
+                        </small>
+                    `;
+                    
+                    // Show success toast
+                    showToast('Thank you! Your feedback helps improve our AI detection.', 'success');
+                } else {
+                    showToast('Error submitting feedback. Please try again.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error submitting feedback. Please try again.', 'error');
+            });
+        }
+        
+        function editDefect(defectIndex) {
+            const defects = {{ defects | tojson | safe }};
+            const defect = defects[defectIndex];
+            
+            // Create modal for editing defect details
+            const modalHtml = `
+                <div class="modal fade" id="editDefectModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit Defect Details</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="editDefectForm">
+                                    <div class="mb-3">
+                                        <label for="editCategory" class="form-label">Category</label>
+                                        <select class="form-select" id="editCategory">
+                                            <option value="structural" ${defect.category === 'structural' ? 'selected' : ''}>Structural</option>
+                                            <option value="electrical" ${defect.category === 'electrical' ? 'selected' : ''}>Electrical</option>
+                                            <option value="plumbing" ${defect.category === 'plumbing' ? 'selected' : ''}>Plumbing</option>
+                                            <option value="hvac" ${defect.category === 'hvac' ? 'selected' : ''}>HVAC</option>
+                                            <option value="safety" ${defect.category === 'safety' ? 'selected' : ''}>Safety</option>
+                                            <option value="cosmetic" ${defect.category === 'cosmetic' ? 'selected' : ''}>Cosmetic</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editSeverity" class="form-label">Severity</label>
+                                        <select class="form-select" id="editSeverity">
+                                            <option value="critical" ${defect.severity === 'critical' ? 'selected' : ''}>Critical</option>
+                                            <option value="high" ${defect.severity === 'high' ? 'selected' : ''}>High</option>
+                                            <option value="medium" ${defect.severity === 'medium' ? 'selected' : ''}>Medium</option>
+                                            <option value="low" ${defect.severity === 'low' ? 'selected' : ''}>Low</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editLocation" class="form-label">Location</label>
+                                        <input type="text" class="form-control" id="editLocation" value="${defect.location}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editDescription" class="form-label">Description</label>
+                                        <textarea class="form-control" id="editDescription" rows="3">${defect.description}</textarea>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" onclick="saveDefectEdit(${defectIndex})">Save Changes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById('editDefectModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('editDefectModal'));
+            modal.show();
+        }
+        
+        function saveDefectEdit(defectIndex) {
+            const editData = {
+                defect_index: defectIndex,
+                category: document.getElementById('editCategory').value,
+                severity: document.getElementById('editSeverity').value,
+                location: document.getElementById('editLocation').value,
+                description: document.getElementById('editDescription').value,
+                user_session: '{{ request.session.get("user_id", "anonymous") }}',
+                timestamp: new Date().toISOString()
+            };
+            
+            fetch('/api/edit-defect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(editData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editDefectModal'));
+                    modal.hide();
+                    
+                    // Update the table row
+                    updateDefectRow(defectIndex, editData);
+                    
+                    showToast('Defect updated successfully! This helps train our AI.', 'success');
+                } else {
+                    showToast('Error updating defect. Please try again.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error updating defect. Please try again.', 'error');
+            });
+        }
+        
+        function updateDefectRow(defectIndex, editData) {
+            const rows = document.querySelectorAll('tbody tr');
+            const row = rows[defectIndex];
+            
+            // Update category badge
+            const categoryCell = row.cells[0];
+            categoryCell.innerHTML = `<span class="badge bg-primary">${editData.category.charAt(0).toUpperCase() + editData.category.slice(1)}</span>`;
+            
+            // Update severity badge
+            const severityCell = row.cells[1];
+            const severityClass = editData.severity === 'critical' ? 'danger' : 
+                                 editData.severity === 'high' ? 'warning' : 
+                                 editData.severity === 'medium' ? 'info' : 'secondary';
+            severityCell.innerHTML = `<span class="badge bg-${severityClass}">${editData.severity.charAt(0).toUpperCase() + editData.severity.slice(1)}</span>`;
+            
+            // Update location
+            row.cells[2].textContent = editData.location.charAt(0).toUpperCase() + editData.location.slice(1);
+            
+            // Update description
+            const description = editData.description.length > 80 ? editData.description.substring(0, 80) + '...' : editData.description;
+            row.cells[3].textContent = description;
+        }
+        
+        function showToast(message, type) {
+            // Create toast container if it doesn't exist
+            let toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toast-container';
+                toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+                toastContainer.style.zIndex = '9999';
+                document.body.appendChild(toastContainer);
+            }
+            
+            // Create toast
+            const toastId = 'toast-' + Date.now();
+            const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+            const toastHtml = `
+                <div id="${toastId}" class="toast ${bgClass} text-white" role="alert">
+                    <div class="toast-body">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                        ${message}
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            
+            // Show toast
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+            
+            // Remove toast after it's hidden
+            toastElement.addEventListener('hidden.bs.toast', () => {
+                toastElement.remove();
+            });
+        }
     </script>
     
     <!-- Print Footer (only visible when printing) -->

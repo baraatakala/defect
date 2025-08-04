@@ -24,12 +24,60 @@
             </a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="/"><i class="fas fa-home"></i> New Analysis</a>
+                <a class="nav-link" href="/reports"><i class="fas fa-history"></i> Reports History</a>
                 <a class="nav-link" href="/analytics"><i class="fas fa-chart-line"></i> Analytics</a>
             </div>
         </div>
     </nav>
 
     <div class="container my-5">
+        <!-- Report Navigation (only show for historical reports) -->
+        {% if is_historical and (prev_report_id or next_report_id) %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-light border-primary">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                {% if prev_report_id %}
+                                <a href="/report/{{ prev_report_id }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-chevron-left"></i> Previous Report
+                                </a>
+                                {% else %}
+                                <button class="btn btn-outline-secondary" disabled>
+                                    <i class="fas fa-chevron-left"></i> Previous Report
+                                </button>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="text-center">
+                                <span class="badge bg-primary fs-6">
+                                    <i class="fas fa-file-alt"></i> Report ID: #{{ report_id }}
+                                </span>
+                                <br>
+                                <a href="/reports" class="btn btn-sm btn-link">
+                                    <i class="fas fa-list"></i> View All Reports
+                                </a>
+                            </div>
+                            
+                            <div>
+                                {% if next_report_id %}
+                                <a href="/report/{{ next_report_id }}" class="btn btn-outline-primary">
+                                    Next Report <i class="fas fa-chevron-right"></i>
+                                </a>
+                                {% else %}
+                                <button class="btn btn-outline-secondary" disabled>
+                                    Next Report <i class="fas fa-chevron-right"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Header -->
         <div class="row mb-4">
             <div class="col-12">
@@ -37,6 +85,9 @@
                     <div>
                         <h1 class="display-6 fw-bold">
                             <i class="fas fa-file-alt text-primary"></i> Analysis Results
+                            {% if is_historical %}
+                            <small class="text-muted">(Historical Report)</small>
+                            {% endif %}
                         </h1>
                         <p class="lead text-muted">Report: {{ filename }}</p>
                     </div>
@@ -47,6 +98,11 @@
                         <button onclick="exportToPDF()" class="btn btn-outline-secondary">
                             <i class="fas fa-file-pdf"></i> Export PDF
                         </button>
+                        {% if is_historical %}
+                        <a href="/reports" class="btn btn-info">
+                            <i class="fas fa-history"></i> All Reports
+                        </a>
+                        {% endif %}
                         <a href="/" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Analyze Another
                         </a>

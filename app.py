@@ -901,6 +901,171 @@ def update_training_analytics(feedback_type):
     except Exception as e:
         print(f"Error updating training analytics: {e}")
 
+@app.route('/reports')
+def reports_history():
+    """Show history of all analyzed reports with navigation"""
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        
+        # Get all reports with their defect counts
+        cursor.execute('''
+            SELECT r.id, r.filename, r.upload_date, r.file_type, r.total_defects,
+                   COUNT(d.id) as actual_defects
+            FROM reports r
+            LEFT JOIN defects d ON r.id = d.report_id
+            GROUP BY r.id, r.filename, r.upload_date, r.file_type, r.total_defects
+            ORDER BY r.upload_date DESC
+        ''')
+        
+        reports = []
+        for row in cursor.fetchall():
+            reports.append({
+                'id': row[0],
+                'filename': row[1],
+                'upload_date': row[2],
+                'file_type': row[3],
+                'total_defects': row[4] or row[5],  # Use stored count or actual count
+                'actual_defects': row[5]
+            })
+        
+        conn.close()
+        
+        return render_template('reports_history.html', 
+                             reports=reports,
+                             analytics=analytics_data)
+        
+    except Exception as e:
+        print(f"Error loading reports history: {e}")
+        return render_template('reports_history.html', 
+                             reports=[],
+                             error="Could not load reports history",
+                             analytics=analytics_data)
+
+@app.route('/report/<int:report_id>')
+def view_report(report_id):
+    """View a specific report with navigation controls"""
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        
+        # Get report details
+        cursor.execute('''
+            SELECT id, filename, upload_date, file_type, total_defects, analysis_data
+            FROM reports WHERE id = ?
+        ''', (report_id,))
+        
+        report_row = cursor.fetchone()
+        if not report_row:
+            flash('Report not found', 'error')
+            return redirect(url_for('reports_history'))
+        
+        # Get defects for this report
+        cursor.execute('''
+            SELECT category, severity, description, location, confidence
+            FROM defects WHERE report_id = ?
+            ORDER BY severity DESC, confidence DESC
+        ''', (report_id,))
+        
+        defects = []
+        for row in cursor.fetchall():
+            defects.append({
+                'category': row[0],
+                'severity': row[1], 
+                'description': row[2],
+                'location': row[3],
+                'confidence': row[4] or 0.5,
+                'text': row[2]  # For feedback compatibility
+            })
+        
+        # Get navigation info (previous/next reports)
+        cursor.execute('SELECT id FROM reports WHERE id < ? ORDER BY id DESC LIMIT 1', (report_id,))
+        prev_report = cursor.fetchone()
+        prev_id = prev_report[0] if prev_report else None
+        
+        cursor.execute('SELECT id FROM reports WHERE id > ? ORDER BY id ASC LIMIT 1', (report_id,))
+        next_report = cursor.fetchone()
+        next_id = next_report[0] if next_report else None
+        
+        conn.close()
+        
+        # Parse analysis data if available
+        analysis_data = None
+        if report_row[5]:  # analysis_data column
+            try:
+                analysis_data = json.loads(report_row[5])
+            except:
+                analysis_data = None
+        
+        # Create analysis object for template compatibility
+        if not analysis_data:
+            # Generate analysis from defects
+            severity_counts = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
+            category_counts = {}
+            
+            for defect in defects:
+                severity_counts[defect['severity']] = severity_counts.get(defect['severity'], 0) + 1
+                category_counts[defect['category']] = category_counts.get(defect['category'], 0) + 1
+            
+            analysis_data = {
+                'total_defects': len(defects),
+                'severity_distribution': severity_counts,
+                'category_distribution': category_counts,
+                'priority_defects': [d for d in defects if d['severity'] in ['critical', 'high']],
+                'recommendations': generate_recommendations(defects)
+            }
+        
+        return render_template('results.html',
+                             filename=report_row[1],
+                             analysis=analysis_data,
+                             defects=defects,
+                             analytics=analytics_data,
+                             # Navigation data
+                             report_id=report_id,
+                             prev_report_id=prev_id,
+                             next_report_id=next_id,
+                             is_historical=True)
+        
+    except Exception as e:
+        print(f"Error loading report {report_id}: {e}")
+        flash('Error loading report', 'error')
+        return redirect(url_for('reports_history'))
+
+def generate_recommendations(defects):
+    """Generate recommendations based on defects"""
+    recommendations = []
+    
+    # Count defects by category
+    categories = {}
+    for defect in defects:
+        cat = defect['category']
+        categories[cat] = categories.get(cat, 0) + 1
+    
+    # Generate category-specific recommendations
+    if categories.get('structural', 0) > 0:
+        recommendations.append("Schedule structural engineer inspection for foundation and load-bearing elements")
+    
+    if categories.get('electrical', 0) > 0:
+        recommendations.append("Arrange certified electrician evaluation for electrical safety compliance")
+    
+    if categories.get('plumbing', 0) > 0:
+        recommendations.append("Contact licensed plumber for water system and drainage assessment")
+    
+    if categories.get('hvac', 0) > 0:
+        recommendations.append("Schedule HVAC technician service for heating and cooling system maintenance")
+    
+    if categories.get('safety', 0) > 0:
+        recommendations.append("Address safety hazards immediately to prevent accidents and ensure compliance")
+    
+    if categories.get('cosmetic', 0) > 0:
+        recommendations.append("Plan cosmetic repairs to maintain property value and appearance")
+    
+    # Add general recommendations
+    if len(defects) > 5:
+        recommendations.append("Consider comprehensive building inspection due to multiple defects identified")
+    
+    return recommendations
+
 if __name__ == '__main__':
     # Initialize
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)

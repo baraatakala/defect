@@ -84,6 +84,29 @@ SEVERITY_KEYWORDS = {
     'low': ['minor', 'cosmetic', 'superficial', 'small', 'slight', 'minimal']
 }
 
+# Initialize app when module is loaded (for gunicorn)
+def initialize_app():
+    """Initialize the application for production deployment"""
+    try:
+        # Create upload directory
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        print(f"📁 Upload folder created: {UPLOAD_FOLDER}")
+        
+        # Initialize database
+        init_database()
+        print("📊 Database initialized")
+        
+        # Load analytics
+        load_analytics()
+        print("📈 Analytics loaded")
+        
+        print("✅ App initialization complete")
+        
+    except Exception as e:
+        print(f"❌ Initialization error: {e}")
+        # Don't fail completely, continue with basic setup
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 def init_database():
     """Initialize SQLite database for storing reports and analysis"""
     conn = sqlite3.connect(DATABASE)
@@ -349,6 +372,9 @@ def generate_recommendations(category_dist, severity_dist):
     
     return recommendations
 
+# Initialize the application for production deployment
+initialize_app()
+
 @app.route('/')
 def home():
     """Serve the homepage"""
@@ -366,89 +392,119 @@ def health_check():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """Handle file upload and analysis"""
-    if 'file' not in request.files:
-        flash('No file selected')
-        return redirect(request.url)
-    
-    file = request.files['file']
-    if file.filename == '':
-        flash('No file selected')
-        return redirect(url_for('home'))
-    
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(filepath)
+    try:
+        # Ensure upload directory exists
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         
-        try:
-            # Extract text from file
-            extracted_text = extract_text_from_file(filepath)
-            
-            if not extracted_text.strip():
-                flash('Could not extract text from file. Please check file format.')
-                os.remove(filepath)  # Clean up
-                return redirect(url_for('home'))
-            
-            # Detect defects
-            defects = detect_defects_rule_based(extracted_text)
-            
-            # Analyze defects
-            analysis = analyze_defects(defects)
-            
-            # Update analytics
-            analytics_data['total_reports'] += 1
-            analytics_data['reports_today'] += 1
-            analytics_data['total_defects'] += analysis['total_defects']
-            
-            # Update category counts
-            for category, count in analysis['category_distribution'].items():
-                analytics_data['defect_categories'][category] = analytics_data['defect_categories'].get(category, 0) + count
-            
-            # Update severity distribution
-            for severity, count in analysis['severity_distribution'].items():
-                analytics_data['severity_distribution'][severity] += count
-            
-            save_analytics()
-            
-            # Store in database
-            conn = sqlite3.connect(DATABASE)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                INSERT INTO reports (filename, file_type, total_defects, analysis_data)
-                VALUES (?, ?, ?, ?)
-            ''', (filename, filepath.rsplit('.', 1)[1].lower(), analysis['total_defects'], json.dumps(analysis)))
-            
-            report_id = cursor.lastrowid
-            
-            # Store individual defects
-            for defect in defects:
-                cursor.execute('''
-                    INSERT INTO defects (report_id, category, severity, description, location, confidence)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (report_id, defect['category'], defect['severity'], 
-                     defect['description'], defect['location'], defect['confidence']))
-            
-            conn.commit()
-            conn.close()
-            
-            # Clean up uploaded file
-            os.remove(filepath)
-            
-            return render_template('results.html', 
-                                 filename=filename,
-                                 defects=defects,
-                                 analysis=analysis,
-                                 analytics=analytics_data)
+        if 'file' not in request.files:
+            flash('No file selected')
+            return redirect(request.url)
         
-        except Exception as e:
-            flash(f'Error processing file: {str(e)}')
-            if os.path.exists(filepath):
-                os.remove(filepath)
+        file = request.files['file']
+        if file.filename == '':
+            flash('No file selected')
             return redirect(url_for('home'))
-    
-    else:
-        flash('Invalid file type. Please upload PDF, DOCX, or TXT files.')
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            
+            # Save file
+            file.save(filepath)
+            print(f"✅ File saved: {filepath}")
+            
+            try:
+                # Extract text from file
+                print(f"📄 Extracting text from: {filename}")
+                extracted_text = extract_text_from_file(filepath)
+                
+                if not extracted_text.strip():
+                    print("❌ No text extracted from file")
+                    flash('Could not extract text from file. Please check file format.')
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
+                    return redirect(url_for('home'))
+                
+                print(f"✅ Text extracted: {len(extracted_text)} characters")
+                
+                # Detect defects
+                print("🔍 Detecting defects...")
+                defects = detect_defects_rule_based(extracted_text)
+                print(f"✅ Found {len(defects)} defects")
+                
+                # Analyze defects
+                print("📊 Analyzing defects...")
+                analysis = analyze_defects(defects)
+                
+                # Update analytics
+                analytics_data['total_reports'] += 1
+                analytics_data['reports_today'] += 1
+                analytics_data['total_defects'] += analysis['total_defects']
+                
+                # Update category counts
+                for category, count in analysis['category_distribution'].items():
+                    analytics_data['defect_categories'][category] = analytics_data['defect_categories'].get(category, 0) + count
+                
+                # Update severity distribution
+                for severity, count in analysis['severity_distribution'].items():
+                    analytics_data['severity_distribution'][severity] += count
+                
+                save_analytics()
+                
+                # Store in database
+                try:
+                    print("💾 Storing in database...")
+                    conn = sqlite3.connect(DATABASE)
+                    cursor = conn.cursor()
+                    
+                    cursor.execute('''
+                        INSERT INTO reports (filename, file_type, total_defects, analysis_data)
+                        VALUES (?, ?, ?, ?)
+                    ''', (filename, filepath.rsplit('.', 1)[1].lower(), analysis['total_defects'], json.dumps(analysis)))
+                    
+                    report_id = cursor.lastrowid
+                    
+                    # Store individual defects
+                    for defect in defects:
+                        cursor.execute('''
+                            INSERT INTO defects (report_id, category, severity, description, location, confidence)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        ''', (report_id, defect['category'], defect['severity'], 
+                             defect['description'], defect['location'], defect['confidence']))
+                    
+                    conn.commit()
+                    conn.close()
+                    print("✅ Data stored successfully")
+                    
+                except Exception as db_error:
+                    print(f"❌ Database error: {db_error}")
+                    # Continue even if database fails
+                
+                # Clean up uploaded file
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                    print("🗑️ Cleaned up uploaded file")
+                
+                return render_template('results.html', 
+                                     filename=filename,
+                                     defects=defects,
+                                     analysis=analysis,
+                                     analytics=analytics_data)
+            
+            except Exception as processing_error:
+                print(f"❌ Processing error: {processing_error}")
+                flash(f'Error processing file: {str(processing_error)}')
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                return redirect(url_for('home'))
+        
+        else:
+            flash('Invalid file type. Please upload PDF, DOCX, or TXT files.')
+            return redirect(url_for('home'))
+            
+    except Exception as general_error:
+        print(f"❌ General error in upload: {general_error}")
+        flash(f'Server error: {str(general_error)}')
         return redirect(url_for('home'))
 
 @app.route('/analytics')

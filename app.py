@@ -17,16 +17,29 @@ try:
     import fitz  # PyMuPDF
     from docx import Document
     import spacy
-    # Download spacy model if needed
+    
+    # Try to load spacy model with better error handling
+    nlp = None
     try:
         nlp = spacy.load("en_core_web_sm")
+        print("✅ SpaCy model loaded successfully")
     except OSError:
-        print("Downloading spaCy English model...")
-        os.system("python -m spacy download en_core_web_sm")
-        nlp = spacy.load("en_core_web_sm")
+        print("⚠️ SpaCy model not found. Will try to download...")
+        try:
+            import subprocess
+            subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"], 
+                         check=True, capture_output=True)
+            nlp = spacy.load("en_core_web_sm")
+            print("✅ SpaCy model downloaded and loaded")
+        except Exception as e:
+            print(f"❌ Could not download spaCy model: {e}")
+            print("Will use basic text processing without spaCy")
+            nlp = None
+            
 except ImportError as e:
-    print(f"Some dependencies missing: {e}")
+    print(f"❌ Some dependencies missing: {e}")
     print("Please install: pip install PyPDF2 PyMuPDF python-docx spacy")
+    nlp = None
 
 app = Flask(__name__)
 app.secret_key = 'building_defect_detector_2025'
@@ -340,6 +353,15 @@ def generate_recommendations(category_dist, severity_dist):
 def home():
     """Serve the homepage"""
     return render_template('index.html', analytics=analytics_data)
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Railway"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'service': 'Building Defect Detector'
+    }), 200
 
 @app.route('/upload', methods=['POST'])
 def upload_file():

@@ -6,7 +6,6 @@ PyPDF2==3.0.1
 PyMuPDF==1.23.3
 python-docx==0.8.11
 spacy==3.6.1
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl
 matplotlib==3.7.2
 plotly==5.15.0
 pandas==2.0.3

@@ -394,7 +394,7 @@
                 location: defect.location,
                 confidence: defect.confidence,
                 feedback_type: feedbackType,
-                user_session: '{{ request.session.get("user_id", "anonymous") }}',
+                user_session: 'anonymous',
                 timestamp: new Date().toISOString()
             };
             
@@ -504,7 +504,7 @@
                 severity: document.getElementById('editSeverity').value,
                 location: document.getElementById('editLocation').value,
                 description: document.getElementById('editDescription').value,
-                user_session: '{{ request.session.get("user_id", "anonymous") }}',
+                user_session: 'anonymous',
                 timestamp: new Date().toISOString()
             };
             

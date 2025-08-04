@@ -264,20 +264,116 @@ body {
 
 /* Print Styles */
 @media print {
+    /* Hide non-essential elements */
     .navbar,
     footer,
     .btn,
-    .alert-dismissible .btn-close {
+    .alert-dismissible .btn-close,
+    .print-controls {
         display: none !important;
+    }
+    
+    /* Page layout optimization */
+    body {
+        font-size: 12pt;
+        line-height: 1.4;
+        color: black;
     }
     
     .container {
         max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
+    /* Cards and sections */
     .card {
         box-shadow: none !important;
         border: 1px solid #dee2e6 !important;
+        page-break-inside: avoid;
+        margin-bottom: 20pt;
+    }
+    
+    /* Headers and titles */
+    h1, h2, h3, h4, h5, h6 {
+        color: black !important;
+        page-break-after: avoid;
+    }
+    
+    /* Tables */
+    table {
+        border-collapse: collapse !important;
+    }
+    
+    table th,
+    table td {
+        border: 1px solid #000 !important;
+        padding: 8pt !important;
+    }
+    
+    /* Charts - hide interactive elements, show data tables */
+    .chart-container canvas {
+        display: none !important;
+    }
+    
+    .chart-data-table {
+        display: table !important;
+    }
+    
+    /* Defect items */
+    .defect-item {
+        page-break-inside: avoid;
+        border: 1px solid #ccc !important;
+        margin-bottom: 10pt;
+        padding: 10pt;
+    }
+    
+    /* Progress bars - convert to text */
+    .progress {
+        display: none !important;
+    }
+    
+    .progress-text {
+        display: inline !important;
+        font-weight: bold;
+    }
+    
+    /* Badges and colors */
+    .badge {
+        border: 1px solid #000 !important;
+        color: black !important;
+        background: white !important;
+    }
+    
+    /* Icons - remove colors */
+    i {
+        color: black !important;
+    }
+    
+    /* Page breaks */
+    .page-break {
+        page-break-before: always;
+    }
+    
+    /* Print header */
+    .print-header {
+        display: block !important;
+        text-align: center;
+        border-bottom: 2px solid black;
+        padding-bottom: 10pt;
+        margin-bottom: 20pt;
+    }
+    
+    /* Print footer */
+    .print-footer {
+        display: block !important;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        text-align: center;
+        border-top: 1px solid black;
+        padding-top: 5pt;
+        font-size: 10pt;
     }
 }
 

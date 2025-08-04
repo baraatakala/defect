@@ -10,6 +10,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <!-- Print Header (only visible when printing) -->
+    <div class="print-header d-none">
+        <h2>Building Defect Analytics Dashboard</h2>
+        <p>AI-Powered Building Defect Detector Analytics | Generated: <span id="print-date"></span></p>
+    </div>
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
@@ -27,10 +33,22 @@
         <!-- Header -->
         <div class="row mb-4">
             <div class="col-12">
-                <h1 class="display-6 fw-bold">
-                    <i class="fas fa-chart-line text-primary"></i> Analytics Dashboard
-                </h1>
-                <p class="lead text-muted">Comprehensive overview of building defect detection performance</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="display-6 fw-bold">
+                            <i class="fas fa-chart-line text-primary"></i> Analytics Dashboard
+                        </h1>
+                        <p class="lead text-muted">Comprehensive overview of building defect detection performance</p>
+                    </div>
+                    <div class="print-controls">
+                        <button onclick="window.print()" class="btn btn-outline-primary">
+                            <i class="fas fa-print"></i> Print Report
+                        </button>
+                        <button onclick="exportToPDF()" class="btn btn-primary">
+                            <i class="fas fa-file-pdf"></i> Export PDF
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -335,6 +353,32 @@
                 }
             }
         });
+        
+        // Set print date
+        document.getElementById('print-date').textContent = new Date().toLocaleDateString();
+        
+        // Export PDF functionality
+        function exportToPDF() {
+            window.print();
+        }
+        
+        // Enhanced print functionality
+        window.addEventListener('beforeprint', function() {
+            // Show print elements
+            document.querySelector('.print-header').classList.remove('d-none');
+            document.querySelector('.print-footer').classList.remove('d-none');
+        });
+        
+        window.addEventListener('afterprint', function() {
+            // Hide print elements after printing
+            document.querySelector('.print-header').classList.add('d-none');
+            document.querySelector('.print-footer').classList.add('d-none');
+        });
     </script>
+    
+    <!-- Print Footer (only visible when printing) -->
+    <div class="print-footer d-none">
+        <p>Building Defect Analytics Dashboard | Generated: <span id="current-date"></span> | AI-Powered Defect Detection System</p>
+    </div>
 </body>
 </html>
